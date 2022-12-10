@@ -1,0 +1,14 @@
+{
+    "reactions":[
+        {
+            "reaction_expression": "Alb + T -> AlbT",
+            "fwd_k": 1.1
+        },
+        {
+            "reaction_expression": "T <-> Tf",
+            "fwd_k": 1,
+            "rev_k": 1
+        }
+    ],
+    "required_initial_conditions":["T","Alb"]
+}

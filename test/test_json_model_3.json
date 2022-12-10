@@ -1,0 +1,40 @@
+{
+    "reactions":[
+        {
+            "reaction_expression": "Alb + T <-> AlbT",
+            "fwd_k": 0.01,
+            "rev_k": 280
+        },
+        {
+            "reaction_expression": "T <-> Tf",
+            "fwd_k": 1,
+            "rev_k": 1
+        },
+        {
+            "reaction_expression": "SHBG + T <-> SHBGT",
+            "fwd_k": 1,
+            "rev_k": 128
+        },
+        {
+            "reaction_expression": "SHBG <-> S1",
+            "fwd_k": 1,
+            "rev_k": 0.49
+        },
+        {
+            "reaction_expression": "S1 + T <-> S1T",
+            "fwd_k": 0.209,
+            "rev_k": 0.1
+        },
+        {
+            "reaction_expression": "SHBGT + T <-> SHBGT2",
+            "fwd_k": 1,
+            "rev_k": 4.82
+        },
+        {
+            "reaction_expression": "S1T + T <-> SHBGT2",
+            "fwd_k": 1,
+            "rev_k": 4.62
+        }
+
+    ]
+}
