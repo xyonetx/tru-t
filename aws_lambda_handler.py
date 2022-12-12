@@ -3,8 +3,10 @@ import json
 
 import pandas as pd
 
-from src.unit_conversion import DISPLAY_TO_UNIT_MAP, \
-    convert_unit
+from src.unit_conversion import precalculate_conversion_factors, \
+    DISPLAY_TO_UNIT_MAP
+from src.utils import prepare_final_result
+
 from trut_main import main as trut_main
 
 '''
@@ -28,13 +30,13 @@ MODEL_FILE = 'testosterone_model_spec.json'
 # all the potential species in the result:
 ALL_SPECIES = [
     'Alb',
-    'AlbT ',
-    'S1',       
-    'S1T',      
-    'SHBG',     
-    'SHBGT',    
-    'SHBGT2',         
-    'T',        
+    'AlbT',
+    'S1',
+    'S1T',
+    'SHBG',
+    'SHBGT'
+    'SHBGT2',
+    'T',
     'Tf'
 ]
 
@@ -50,55 +52,6 @@ accepted_units_dict = {}
 accepted_units_dict['T'] = ['ng/dL', 'pg/mL', 'nmol/L']
 accepted_units_dict['SHBG'] = ['nmol/L', ]
 accepted_units_dict['Alb'] = ['g/dL', 'g/L', 'nmol/L']
-
-
-def precalculate_conversion_factors():
-    '''
-    Creates a pre-calculated dict for quick lookups of conversion
-    factors. This avoids having to perform repeated calls
-    to the conversion functions.
-
-    We create a two-level dict. The first level addresses the species
-    and the second level addresses the unit. 
-
-    For example, given the dict d:
-    d['T']['ng/dL'] would give you the conversion factor to convert T
-    # from ng/dL to the common unit.
-    # Note that this is only for the free-T calcs we are concerned with
-    in this lambda function handler.
-    '''
-    conversion_factor_dict = {}
-    for species in ALL_IC_SPECIES:
-        conversion_factor_dict[species] = {}
-        for unit in accepted_units_dict[species]:
-            cf = get_conversion_factor(species, unit, COMMON_UNIT)
-            conversion_factor_dict[species].update({unit: cf})
-    return conversion_factor_dict
-
-
-def get_conversion_factor(species, orig_unit, return_unit):
-    '''
-    `species` is a string for the entity (e.g. "T", or "Alb")
-    `orig_unit` is something like 'ng/dL'
-    return_unit is a unit string (e.g. 'nmol/L')
-    that it should be converted to
-
-    returns the conversion factor (a float). Thus, you
-    will need to take the result of this function
-    and multiply it by the value (in the orig_unit)
-    '''
-    # if SHBG, we do NOT convert units
-    # Note that we handle dimer conversion (i.e. multiply by 0.5)
-    # in the call to the calculation. Just check that it's given
-    # in the canonical unit of nmol/L here
-    if species == 'SHBG':
-        if orig_unit != 'nmol/L':
-            raise Exception('SHBG needs to be in nmol/L')
-        return 1.0
-    else:
-        orig_unit = DISPLAY_TO_UNIT_MAP[orig_unit]
-        target_unit = DISPLAY_TO_UNIT_MAP[return_unit]
-        return convert_unit(species, orig_unit, target_unit)
 
 
 def generate_response(status_code, body):
@@ -150,7 +103,10 @@ def handle_args(payload):
     except KeyError:
         ic_postfix = '_0'
 
-    return initial_conditions, return_species, return_ic, ic_postfix
+    return initial_conditions, \
+        return_species, \
+        return_ic, \
+        ic_postfix
 
 
 def convert_subject(subject_and_spec_tuple, conversion_factor_dict):
@@ -179,36 +135,6 @@ def convert_subject(subject_and_spec_tuple, conversion_factor_dict):
                             f' For {species}, we accept: {accepted_units_dict[species]}')
         converted[species] = cf * value
     return (key, converted)
-
-
-def prepare_final_result(result, ic_df, return_species, return_ic, ic_postfix):
-    '''
-    Modifies the result dataframe to be in accordance with
-    the request.
-
-    `result` is the dataframe of all species.
-    `ic_df` is the dataframe used for initial conditions
-    `return_species` is a dict giving the desired species to return
-        (e.g. only free T in units of ng/dL)
-    `return_ic` is a boolean indicating whether the request would like
-        the initial conditions to be echoed back with the result 
-    `ic_postfix` is a string to append to the initial conditions so that
-        they are not confused with the equilibrium values.
-    '''
-    subset_result = result.loc[:, return_species.keys()]
-
-    # Now convert the units to those desired:
-    for species, desired_unit in return_species.items():
-        cf = get_conversion_factor(species, COMMON_UNIT, desired_unit)
-        subset_result[species] = cf * subset_result[species]
-
-    # if they have requested the initial conditions be returned, append those:
-    if return_ic:
-        ic_df.columns = [x + ic_postfix for x in ic_df.columns]
-        return pd.merge(subset_result, ic_df, 
-                                left_index=True, right_index=True)
-    else:
-        return subset_result
 
 
 def lambda_entrypoint(event, context):
@@ -244,7 +170,8 @@ def lambda_entrypoint(event, context):
         return generate_response(400, f'{ex}')
 
     # convert the initial conditions to the common unit:
-    conversion_factor_dict = precalculate_conversion_factors()
+    conversion_factor_dict = precalculate_conversion_factors(
+        ALL_IC_SPECIES, accepted_units_dict, COMMON_UNIT)
     try:
         df = pd.DataFrame.from_dict(
             dict(
@@ -258,11 +185,10 @@ def lambda_entrypoint(event, context):
         return generate_response(400, f'{ex}')
 
     result = trut_main(MODEL_FILE, df, 30.0)
-
     result = prepare_final_result(result,
-                                  df,
+                                  initial_conditions,
                                   return_species,
                                   return_ic,
-                                  ic_postfix)
-
-    return generate_response(200, json.dumps(result.to_dict(orient='index')))
+                                  ic_postfix,
+                                  COMMON_UNIT)
+    return generate_response(200, json.dumps(result))

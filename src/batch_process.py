@@ -55,7 +55,6 @@ def calculate(df, solver, tmax):
     batch_num = int(np.ceil(df.shape[0]/float(BATCH_SIZE)))
     results = pd.DataFrame()
     for i in range(batch_num):
-        print('Process batch %d' % i)
         start = i*BATCH_SIZE
         end = (i+1)*BATCH_SIZE
         minibatch = df.iloc[start:end]

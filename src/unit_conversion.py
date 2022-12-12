@@ -162,3 +162,57 @@ def convert_unit(species, orig_unit, target_unit):
     denominator_factor = orig_denominator_prefix / target_denominator_prefix
 
     return (numerator_factor / denominator_factor)
+
+
+def get_conversion_factor(species, orig_unit, return_unit):
+    '''
+    This is ultimately a thin wrapper around the `convert_unit` function.
+    It allows us to use, e.g. 'ng/dL' as orig_unit rather than NG_PER_DL
+
+    `species` is a string for the entity (e.g. "T", or "Alb")
+    `orig_unit` is something like 'ng/dL'
+    return_unit is a unit string (e.g. 'nmol/L')
+    that it should be converted to
+
+    returns the conversion factor (a float). Thus, you
+    will need to take the result of this function
+    and multiply it by the value (in the orig_unit)
+    '''
+    # if SHBG, we do NOT convert units
+    # Note that we handle dimer conversion (i.e. multiply by 0.5)
+    # in the call to the calculation. Just check that it's given
+    # in the canonical unit of nmol/L here
+    if species == 'SHBG':
+        if orig_unit != 'nmol/L':
+            raise Exception('SHBG needs to be in nmol/L')
+        return 1.0
+    else:
+        orig_unit = DISPLAY_TO_UNIT_MAP[orig_unit]
+        target_unit = DISPLAY_TO_UNIT_MAP[return_unit]
+        return convert_unit(species, orig_unit, target_unit)
+
+
+def precalculate_conversion_factors(ic_species,
+                                    accepted_units_dict,
+                                    common_unit):
+    '''
+    Creates a pre-calculated dict for quick lookups of conversion
+    factors. This avoids having to perform repeated calls
+    to the conversion functions.
+
+    We create a two-level dict. The first level addresses the species
+    and the second level addresses the unit. 
+
+    For example, given the dict d:
+    d['T']['ng/dL'] would give you the conversion factor to convert T
+    # from ng/dL to the common unit.
+    # Note that this is only for the free-T calcs we are concerned with
+    in this lambda function handler.
+    '''
+    conversion_factor_dict = {}
+    for species in ic_species:
+        conversion_factor_dict[species] = {}
+        for unit in accepted_units_dict[species]:
+            cf = get_conversion_factor(species, unit, common_unit)
+            conversion_factor_dict[species].update({unit: cf})
+    return conversion_factor_dict

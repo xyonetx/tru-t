@@ -2,6 +2,8 @@ import unittest
 import os
 import json
 
+import pandas as pd
+
 from aws_lambda_handler import convert_subject, \
     lambda_entrypoint
 
@@ -163,10 +165,24 @@ class TestAWSFunctions(unittest.TestCase):
             convert_subject(('subjectA', input_dict), mock_conversion_dict)
     
     def test_missing_initial_conditions(self):
-        pass
+        p = os.path.join(this_dir, 'test_lambda_payload_1.json')
+        with open(p) as fin:
+            j = json.load(fin)
+        # remove the initial_conditions dict:
+        j.pop('initial_conditions')
+        result = lambda_entrypoint(j, {})
+        self.assertEqual(result['statusCode'], 400)
+        self.assertTrue("initial_conditions" in result['body'])
 
     def test_missing_return_species(self):
-        pass
+        p = os.path.join(this_dir, 'test_lambda_payload_1.json')
+        with open(p) as fin:
+            j = json.load(fin)
+        # remove the return_species dict:
+        j.pop('return_species')
+        result = lambda_entrypoint(j, {})
+        self.assertEqual(result['statusCode'], 400)
+        self.assertTrue("return_species" in result['body'])
 
     def test_good_response(self):
         '''
@@ -177,4 +193,59 @@ class TestAWSFunctions(unittest.TestCase):
             j = json.load(fin)
         result = lambda_entrypoint(j, {})
         self.assertEqual(result['statusCode'], 200)
+        data = json.loads(result['body'])
+        for subject, measurement_dict in data.items():
+            for species, d in measurement_dict.items():
+                self.assertTrue(d.keys() == set(["value", "unit"]))
+
+    def test_bad_return_species_name(self):
+        # if one of the return species is not recognized
+        p = os.path.join(this_dir, 'test_lambda_payload_1.json')
+        with open(p) as fin:
+            j = json.load(fin)
+        # remove the return_species dict:
+        j['return_species'] = {
+            'XYZ': 'ng/dL'
+        }
+        result = lambda_entrypoint(j, {})
+        self.assertEqual(result['statusCode'], 400)
+        self.assertTrue("XYZ was not recognized" in result['body'])
+
+    def test_bad_return_species_unit(self):
+        # if one of the return species has a unit that we 
+        # don't understand
+        p = os.path.join(this_dir, 'test_lambda_payload_1.json')
+        with open(p) as fin:
+            j = json.load(fin)
+        # remove the return_species dict:
+        j['return_species'] = {
+            'Tf': 'abc'
+        }
+        result = lambda_entrypoint(j, {})
+        self.assertEqual(result['statusCode'], 400)
+        self.assertTrue("abc for species Tf was not recognized" \
+                        in result['body'])
+
+    def test_good_response_with_returned_ic(self):
+        '''
+        Tests the case where the calculation goes as expected AND we 
+        return the initial conditions
+        '''
+        p = os.path.join(this_dir, 'test_lambda_payload_1.json')
+        with open(p) as fin:
+            j = json.load(fin)
         
+        j['return_initial_conditions'] = True
+        result = lambda_entrypoint(j, {})
+        self.assertEqual(result['statusCode'], 200)
+        result = json.loads(result['body'])
+        for s, d in result.items():
+            self.assertTrue(d.keys() == set(['Tf', 'T_0', 'SHBG_0', 'Alb_0']))
+
+        j['return_initial_conditions'] = True
+        j['ic_postfix'] = '_init'
+        result = lambda_entrypoint(j, {})
+        self.assertEqual(result['statusCode'], 200)
+        result = json.loads(result['body'])
+        for s, d in result.items():
+            self.assertTrue(d.keys() == set(['Tf', 'T_init', 'SHBG_init', 'Alb_init']))
