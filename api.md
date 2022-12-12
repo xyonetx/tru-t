@@ -6,7 +6,6 @@
 
 ```
 {
-    "model"                     : <string>,
     "initial_conditions"        : <object>,
     "return_species"            : <array>,
     "return_initial_conditions" : <boolean>,
@@ -15,7 +14,6 @@
 ```
 
 The fields are:
-- `model`(required): A string identifier which specifies the model to use.
 - `initial_conditions` (required): An object specifying the initial conditions. The object itself has keys which are "subject identifiers" (e.g. a patient ID or aliquot ID) which allows us to unambiguously map the initial conditions and results without concerns for potential ordering issues. In turn, those identifiers each reference an "initial condition" object which looks like:
 
 ```
@@ -152,7 +150,6 @@ Consider the following input payload:
 
 ```
 {
-    "model": "EAM",
     "initial_conditions": {
         "subject_A": {
             "T": {
@@ -199,7 +196,6 @@ Notes:
 
 ```
 {
-    "model": "EAM",
     "initial_conditions": {
         "subject_A": {
             "T": {

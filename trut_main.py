@@ -44,7 +44,7 @@ def parse_commandline_args():
     return parser.parse_args()
 
 
-def main(model_file, input_file, tmax):
+def main(model_file, input_df, tmax):
     '''
 
     Calculates the equilibrium concentrations for the model system
@@ -58,20 +58,19 @@ def main(model_file, input_file, tmax):
     '''
     model = JsonModelFactory(model_file).get_model()
     solver = ODESolverWJacobian(model)
-    df = pd.read_table(input_file, index_col=0)
 
     # for the Tru-T model with SHBG, we need to halve the
     # SHBG to reflect dimer status:
-    df['SHBG'] = 0.5 * df['SHBG']
+    input_df['SHBG'] = 0.5 * input_df['SHBG']
 
-    return calculate(df, solver, tmax)
+    return calculate(input_df, solver, tmax)
 
 
 if __name__ == '__main__':
     args = parse_commandline_args()
-    results = main(args.model_file, args.input_file, args.tmax)
+    df = pd.read_table(args.input_file, index_col=0)
+    results = main(args.model_file, df, args.tmax)
     if args.output_file:
         results.to_csv(args.output_file, sep='\t')
     else:
         print(results)
-        

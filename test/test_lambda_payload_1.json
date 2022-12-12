@@ -1,0 +1,35 @@
+{
+    "initial_conditions": {
+        "subject_0": {
+            "T": {
+                "value": 566.2,
+                "unit": "ng/dL"
+            },
+            "SHBG": {
+                "value": 40.2,
+                "unit": "nmol/L"
+            },
+            "Alb": {
+                "value": 4.3,
+                "unit": "g/dL"
+            }
+        },
+        "subject_N": {
+            "T": {
+                "value": 476.1,
+                "unit": "ng/dL"
+            },
+            "SHBG": {
+                "value": 21.6,
+                "unit": "nmol/L"
+            },
+            "Alb": {
+                "value": 4.4,
+                "unit": "g/dL"
+            }
+        }
+    },
+    "return_species": {
+        "Tf": "ng/dL"
+    }
+}
