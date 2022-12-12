@@ -1,14 +1,11 @@
 __author__ = 'brian'
 
-import sys
-import os
 import unittest
 
 import numpy as np
 import numpy.testing as npt
 
 from src.custom_exceptions import InvalidInitialConditionException, \
-    InitialConditionGivenForMissingElement, \
     InvalidSimulationTimeException
 from src.model_solvers import ODESolver, ODESolverWJacobian
 from src.models import Model

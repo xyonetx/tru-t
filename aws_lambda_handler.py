@@ -1,4 +1,5 @@
 from itertools import repeat
+import json
 
 import pandas as pd
 
@@ -24,8 +25,21 @@ set-up-lambda-proxy-integrations.html
 # The JSON-format model file we use:
 MODEL_FILE = 'testosterone_model_spec.json'
 
+# all the potential species in the result:
+ALL_SPECIES = [
+    'Alb',
+    'AlbT ',
+    'S1',       
+    'S1T',      
+    'SHBG',     
+    'SHBGT',    
+    'SHBGT2',         
+    'T',        
+    'Tf'
+]
+
 # We only accept these species for initial conditions
-ALL_SPECIES = ['T', 'Alb', 'SHBG']
+ALL_IC_SPECIES = ['T', 'Alb', 'SHBG']
 
 # convert everything to this unit when performing calc
 COMMON_UNIT = 'nmol/L'
@@ -54,7 +68,7 @@ def precalculate_conversion_factors():
     in this lambda function handler.
     '''
     conversion_factor_dict = {}
-    for species in ALL_SPECIES:
+    for species in ALL_IC_SPECIES:
         conversion_factor_dict[species] = {}
         for unit in accepted_units_dict[species]:
             cf = get_conversion_factor(species, unit, COMMON_UNIT)
@@ -114,7 +128,17 @@ def handle_args(payload):
         raise Exception('The "return_species" key should'
                         ' reference an object. See API docs for the'
                         ' structure')
-
+    else:
+        # check the dict. This way we don't perform the calculations
+        # and THEN fail out
+        for species, unit in return_species.items():
+            if species not in ALL_SPECIES:
+                raise Exception(f'Species {species} was not recognized and'
+                                ' cannot be returned with the result.')
+            if unit not in DISPLAY_TO_UNIT_MAP.keys():
+                raise Exception(f'Unit {unit} for species {species} was not'
+                                ' recognized and cannot be returned'
+                                ' with the result.')
     try:
         return_ic = bool(payload['return_initial_conditions'])
     except KeyError:
@@ -138,14 +162,15 @@ def convert_subject(subject_and_spec_tuple, conversion_factor_dict):
     d = subject_and_spec_tuple[1]
     converted = {}
     for species, spec in d.items():
-        if species not in ALL_SPECIES:
+        if species not in ALL_IC_SPECIES:
             raise Exception('Did not recognize the'
                             f' following species: {species}')
         try:
             unit = spec['unit']
             value = spec['value']
         except KeyError as ex:
-            raise Exception(f'Initial condition was missing {ex} key.')
+            raise Exception(f'Initial condition for {species}'
+                            f' was missing {ex} key.')
 
         try:
             cf = conversion_factor_dict[species][unit]
@@ -154,6 +179,36 @@ def convert_subject(subject_and_spec_tuple, conversion_factor_dict):
                             f' For {species}, we accept: {accepted_units_dict[species]}')
         converted[species] = cf * value
     return (key, converted)
+
+
+def prepare_final_result(result, ic_df, return_species, return_ic, ic_postfix):
+    '''
+    Modifies the result dataframe to be in accordance with
+    the request.
+
+    `result` is the dataframe of all species.
+    `ic_df` is the dataframe used for initial conditions
+    `return_species` is a dict giving the desired species to return
+        (e.g. only free T in units of ng/dL)
+    `return_ic` is a boolean indicating whether the request would like
+        the initial conditions to be echoed back with the result 
+    `ic_postfix` is a string to append to the initial conditions so that
+        they are not confused with the equilibrium values.
+    '''
+    subset_result = result.loc[:, return_species.keys()]
+
+    # Now convert the units to those desired:
+    for species, desired_unit in return_species.items():
+        cf = get_conversion_factor(species, COMMON_UNIT, desired_unit)
+        subset_result[species] = cf * subset_result[species]
+
+    # if they have requested the initial conditions be returned, append those:
+    if return_ic:
+        ic_df.columns = [x + ic_postfix for x in ic_df.columns]
+        return pd.merge(subset_result, ic_df, 
+                                left_index=True, right_index=True)
+    else:
+        return subset_result
 
 
 def lambda_entrypoint(event, context):
@@ -188,7 +243,7 @@ def lambda_entrypoint(event, context):
     except Exception as ex:
         return generate_response(400, f'{ex}')
 
-    # convert the initial conditions:
+    # convert the initial conditions to the common unit:
     conversion_factor_dict = precalculate_conversion_factors()
     try:
         df = pd.DataFrame.from_dict(
@@ -203,4 +258,11 @@ def lambda_entrypoint(event, context):
         return generate_response(400, f'{ex}')
 
     result = trut_main(MODEL_FILE, df, 30.0)
-    print(result)
+
+    result = prepare_final_result(result,
+                                  df,
+                                  return_species,
+                                  return_ic,
+                                  ic_postfix)
+
+    return generate_response(200, json.dumps(result.to_dict(orient='index')))

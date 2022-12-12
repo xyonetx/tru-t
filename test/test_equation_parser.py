@@ -1,14 +1,9 @@
 __author__ = 'brian'
 
 import unittest
-import sys
-import os
 
-from src.reaction_components import Reactant, Product
-from src.custom_exceptions import ExtraRateConstantException, \
+from src.custom_exceptions import \
     MalformattedReactionDirectionSymbolException, \
-    MissingRateConstantException, \
-    RateConstantFormatException, \
     MalformattedReactionException, \
     InvalidSymbolName
 from src import parsers
