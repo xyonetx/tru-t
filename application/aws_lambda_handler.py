@@ -144,28 +144,16 @@ def lambda_entrypoint(event, context):
     Input args are passed as part of the `event` arg, and may be
     accessed like a dictionary.  
 
-    Note that given a payload of 
-
-    {"foo":{"x":1, "y":2}, "bar":"something"}
-
-    One can get "foo" by:
-    foo = event['foo']
-
-    and variable foo itself will be a native python dictionary
-
-    If the payload is a JSON list:
-    [
-        {"foo":{"x":1, "y":2}, "bar":"something"},
-        {"foo":{"x":1, "y":2}, "bar":"something"},
-        ...
-    ]
-    then `event` is a native python list.
+    Note that the API gateway v2 proxy passes the ENTIRE
+    request body in the `event` arg. The payload of interest
+    is located in the 'body' field (as a string)
     '''
+    body = json.loads(event['body'])
     try:
         initial_conditions, \
             return_species, \
             return_ic, \
-            ic_postfix = handle_args(event)
+            ic_postfix = handle_args(body)
     except Exception as ex:
         return generate_response(400, f'{ex}')
 

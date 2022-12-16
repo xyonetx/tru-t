@@ -1,8 +1,34 @@
-## Tru-T API spec
+## API deployment to AWS via terraform
 
-- ### POST `/api/calculate/`
+The contents of this folder can be used to deploy the Tru-T code to an API located on AWS infrastructure. We use API Gateway coupled with AWS Lambda.
 
-#### Payload:
+**Preliminaries**
+
+To deploy, you need:
+- An AWS account with sufficient privileges
+- A configured profile for the AWS cli (i.e. terraform uses the profile created by `aws configure`)
+- Terraform installed
+- Python 3.9 (needed to create a build archive that runs on AWS Lambda)
+
+**Before using terraform:**
+The terraform plan expects a pre-configured ZIP archive that is compatible with AWS Lambda. To create this, run the `build_archive.sh` script. If successful, there will be a `lambda.zip` archive in this folder.
+
+Note that if you do not have Python 3.9 on the system (use `python3 -V` to view the version), that script will fail. If you do NOT have this installed, you can use a Docker container; just make sure you mount the host volume (`docker run -it -v <host>:<container> <image>`) so the resulting ZIP archive is available on your machine when the container exits.
+
+**To deploy**
+
+Run `terraform init` to initialize. Then run `terraform apply`. At the end, terraform should report the invocation URL of the API. Note that it's simply the "base" url. To perform a calculation, you will need to append the route, e.g. `/calculate`.
+### API specification
+
+**For the OpenAPI 3.0 spec file, see `openapi.json`**
+
+**For a more human-readable description, see below:**
+
+#### POST `/calculate`
+
+This endpoint calculates the equilibrium concentrations for the Tru-T system involving testosterone, SHBG, and human serum albumin. The free testosterone can be extracted from this result.
+
+**Payload:**
 
 ```
 {
@@ -201,11 +227,11 @@ Notes:
             "T": {
                 "value": 566.2,
                 "unit": "ng/dL"
-            }
+            },
             "SHBG": {
                 "value": 40.2, 
                 "unit": "nmol/L"
-            }
+            },
             "Alb": {
                 "value": 4.3,
                 "unit" : "g/dL"

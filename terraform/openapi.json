@@ -1,0 +1,179 @@
+{
+    "openapi": "3.0.3",
+    "info": {
+        "title": "Tru-T Free Testosterone Calculator",
+        "version": "1.0.0"
+    },
+    "paths": {
+        "/calculate": {
+            "summary": "Perform a free-T calculation on one or more measurements.",
+            "post": {
+                "summary": "Calculates free testosterone",
+                "description": "Calculates free testosterone given measurements of total T, SHBG, and albumin.",
+                "operationId": "doCalc",
+                "requestBody": {
+                    "required": true,
+                    "description": "Initial conditions and parameters dictating response",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CalcInput"
+                            },
+                            "examples": {
+                                "ex1": {
+                                    "$ref": "#/components/schemas/CalcInput/example"
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful calculation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "CalcInput": {
+                "required": [
+                    "initial_conditions",
+                    "return_species"
+                ],
+                "type": "object",
+                "properties": {
+                    "initial_conditions": {
+                        "$ref": "#/components/schemas/Batch",
+                        "description": "Initial conditions for one of more subjects."
+                    },
+                    "return_species": {
+                        "type": "object",
+                        "description": "An object with the desired species and return units.",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "return_initial_conditions": {
+                        "type": "boolean",
+                        "description": "Whether to return the initial conditions or not."
+                    },
+                    "ic_postfix": {
+                        "type": "string",
+                        "description": "A suffix to append to the initial conditions so that they are not conflicting with any equilibrium concentrations returned."
+                    }
+                },
+                "example": {
+                    "initial_conditions": {
+                        "subject_A": {
+                            "T": {
+                                "value": 566.2,
+                                "unit": "ng/dL"
+                            },
+                            "SHBG": {
+                                "value": 40.2,
+                                "unit": "nmol/L"
+                            },
+                            "Alb": {
+                                "value": 4.3,
+                                "unit": "g/dL"
+                            }
+                        }
+                    },
+                    "return_species": {
+                        "Tf": "ng/dL"
+                    },
+                    "return_initial_conditions": true,
+                    "ic_postfix": "_init"
+                }
+            },
+            "Batch": {
+                "type": "object",
+                "description": "A mapping of unique subject identifiers to MeasurementSet instances.",
+                "additionalProperties": {
+                    "$ref": "#/components/schemas/MeasurementSet"
+                }
+            },
+            "MeasurementSet": {
+                "type": "object",
+                "description": "A set of measurements for a single subject. The required initial conditions of T, SHBG, and Alb needed to make a free T calculation.",
+                "properties": {
+                    "T": {
+                        "$ref": "#/components/schemas/Measurement"
+                    },
+                    "SHBG": {
+                        "$ref": "#/components/schemas/Measurement"
+                    },
+                    "Alb": {
+                        "$ref": "#/components/schemas/Measurement"
+                    }
+                }
+            },
+            "Measurement": {
+                "type": "object",
+                "description": "A numerical value and unit representing the concentration of a species.",
+                "properties": {
+                    "value": {
+                        "type": "number",
+                        "format": "float",
+                        "description": "The measured value (concentration) of a particular species",
+                        "example": 40.2
+                    },
+                    "unit": {
+                        "type": "string",
+                        "description": "The unit of measurement. Certain species only permit limited measurement units. An example is SHBG, which is always measured in nmol/L",
+                        "enum": [
+                            "nmol/L",
+                            "pg/mL",
+                            "ng/dL",
+                            "g/dL",
+                            "g/L"
+                        ]
+                    }
+                }
+            },
+            "ApiResponse": {
+                "type": "object",
+                "description": "Structure of a successful response.",
+                "properties": {
+                    "results": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/MeasurementSet"
+                        }
+                    }
+                },
+                "example": {
+                    "results": {
+                        "subject_A": {
+                            "Tf": {
+                                "value": 6.04,
+                                "unit": "ng/dL"
+                            },
+                            "T_init": {
+                                "value": 566.2,
+                                "unit": "ng/dL"
+                            },
+                            "SHBG_init": {
+                                "value": 40.2,
+                                "unit": "nmol/L"
+                            },
+                            "Alb_init": {
+                                "value": 4.3,
+                                "unit": "g/dL"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
