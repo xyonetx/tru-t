@@ -1,6 +1,18 @@
-## Setting up the python environment
+## Setting up the python environment with Conda/Mamba (recommended)
 
-Ensure you have a recent version of Python3 installed (3.9+).
+To set up your environment with Conda/Mamba, follow the instructions for Mamba installation (https://mamba.readthedocs.io/en/latest/installation/micromamba-installation.html). Conda and Mamba are effectively the same, but Mamba is often significantly faster in determining the packages to install.
+
+Once mamba is installed, create a new environment using the `conda_env.yaml` file with:
+
+```
+mamba env create -f conda_env.yaml
+```
+
+Once this is complete, you can activate with `mamba activate tru_t`.
+
+## Setting up the python environment with pip
+
+Ensure you have a recent version of Python3 installed (3.12+).
 
 Create a new Python virtual environment:
 

@@ -1,0 +1,13 @@
+name: tru_t
+channels:
+  - conda-forge
+dependencies:
+  - ipympl
+  - jupyter
+  - matplotlib
+  - numpy
+  - openpyxl
+  - pandas
+  - python
+  - scipy
+  - seaborn
